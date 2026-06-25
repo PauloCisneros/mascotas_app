@@ -33,6 +33,8 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _fetchMetrics() async {
+    setState(() => _loadingMetrics = true);
+
     final sectores = await _dbService.countSectors();
     final brigadistas = await _dbService.countUsersByRole('coordinador_brigada');
     final vacunadores = await _dbService.countUsersByRole('vacunador');
@@ -53,6 +55,11 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: const Text("Dashboard Principal"),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: "Recargar métricas",
+            onPressed: _fetchMetrics,
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: "Cerrar sesión",
@@ -90,24 +97,26 @@ class _DashboardPageState extends State<DashboardPage> {
         // Botones de navegación a la izquierda
         Expanded(
           flex: 1,
-          child: ListView(
-            children: [
-              ListTile(
-                title: const Text("Crear Sectores"),
-                onTap: () => Navigator.pushNamed(context, '/sector-management'),
-              ),
-              ListTile(
-                title: const Text("Crear Coordinadores de Brigada"),
-                onTap: () => Navigator.pushNamed(
-                  context,
-                  '/user-management',
-                  arguments: {
-                    'currentRole': 'coordinador_campana',
-                    'sectorId': 'sector-id',
-                  },
-                ),
-              ),
-            ],
+          child: Container(
+            color: Colors.grey.shade200,
+            child: ListView(
+              padding: const EdgeInsets.all(8),
+              children: [
+                _buildNavButton("Crear Sectores", Icons.map, () {
+                  Navigator.pushNamed(context, '/sector-management');
+                }),
+                _buildNavButton("Crear Coordinadores de Brigada", Icons.group_add, () {
+                  Navigator.pushNamed(
+                    context,
+                    '/user-management',
+                    arguments: {
+                      'currentRole': 'coordinador_campana',
+                      'sectorId': 'sector-id',
+                    },
+                  );
+                }),
+              ],
+            ),
           ),
         ),
         // Métricas a la derecha
@@ -115,66 +124,92 @@ class _DashboardPageState extends State<DashboardPage> {
           flex: 2,
           child: _loadingMetrics
               ? const Center(child: CircularProgressIndicator())
-              : GridView.count(
-                  crossAxisCount: 2,
+              : Padding(
                   padding: const EdgeInsets.all(16),
-                  children: [
-                    _buildCard("Sectores", _sectores, Icons.map),
-                    _buildCard("Coordinadores de Brigada", _brigadistas, Icons.group),
-                    _buildCard("Vacunadores", _vacunadores, Icons.medical_services),
-                    _buildCard("Vacunaciones", _vacunaciones, Icons.vaccines),
-                  ],
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _buildMetricCard("Sectores", _sectores, Icons.map, Colors.blue),
+                      _buildMetricCard("Coordinadores", _brigadistas, Icons.group, Colors.orange),
+                      _buildMetricCard("Vacunadores", _vacunadores, Icons.medical_services, Colors.green),
+                      _buildMetricCard("Vacunaciones", _vacunaciones, Icons.vaccines, Colors.purple),
+                    ],
+                  ),
                 ),
         ),
       ],
     );
   }
 
+  Widget _buildNavButton(String title, IconData icon, VoidCallback onTap) {
+    return Card(
+      elevation: 3,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.blue),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String title, int value, IconData icon, Color color) {
+    return SizedBox(
+      width: 150,
+      height: 120,
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 28, color: color),
+              const SizedBox(height: 6),
+              Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              Text(
+                value.toString(),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCoordinadorBrigadaView(BuildContext context) {
     return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
-        ListTile(
-          title: const Text("Ver sectores asignados"),
-          onTap: () {
-            // Aquí enlazas a la vista de sectores asignados
-          },
-        ),
-        ListTile(
-          title: const Text("Crear Vacunadores"),
-          onTap: () => Navigator.pushNamed(
+        _buildNavButton("Ver sectores asignados", Icons.visibility, () {
+          // Aquí enlazas a la vista de sectores asignados
+        }),
+        _buildNavButton("Crear Vacunadores", Icons.person_add, () {
+          Navigator.pushNamed(
             context,
             '/user-management',
             arguments: {
               'currentRole': 'coordinador_brigada',
               'sectorId': 'sector-id',
             },
-          ),
-        ),
+          );
+        }),
       ],
     );
   }
 
   Widget _buildVacunadorView(BuildContext context) {
     return Center(
-      child: ElevatedButton(
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.vaccines),
         onPressed: () => Navigator.pushNamed(context, '/vaccination-form'),
-        child: const Text("Registrar Nueva Vacunación"),
-      ),
-    );
-  }
-
-  Widget _buildCard(String title, int value, IconData icon) {
-    return Card(
-      elevation: 4,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 40, color: Colors.blue),
-            const SizedBox(height: 10),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(value.toString(), style: const TextStyle(fontSize: 24)),
-          ],
+        label: const Text("Registrar Nueva Vacunación"),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
