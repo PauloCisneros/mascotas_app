@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-// Asegúrate de importar el archivo que creamos
-import '../services/supabase_service.dart'; 
+import 'services/supabase_service.dart'; 
+import 'pages/auth/login_page.dart';
+import 'pages/dashboard/dashboard_page.dart';
+import 'pages/auth/change_password_page.dart';
 
 void main() async {
-  // 1. Necesario para inicializar bindings antes de tareas asíncronas
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 2. Inicializamos Supabase antes de arrancar la aplicación
   await SupabaseService.initialize();
 
   runApp(const MainApp());
@@ -18,11 +17,20 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Supabase Inicializado Correctamente'),
-        ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Campaña Vacunación',
+      // Definimos la ruta inicial
+      initialRoute: Supabase.instance.client.auth.currentUser == null ? '/login' : '/dashboard',
+      // Definimos todas las rutas de la app
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/dashboard': (context) => const DashboardPage(),
+        '/change-password': (context) => const ChangePasswordPage(),
+      },
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
       ),
     );
   }
