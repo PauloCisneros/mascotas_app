@@ -28,21 +28,24 @@ class _LoginPageState extends State<LoginPage> {
       final user = Supabase.instance.client.auth.currentUser;
       
       if (user != null) {
-        // 3. Consultar si es su primer inicio de sesión desde la tabla profiles
+        // 3. Consultar el perfil de forma segura
         final profile = await Supabase.instance.client
             .from('profiles')
             .select('is_first_login')
             .eq('id', user.id)
-            .single();
+            .maybeSingle(); // Cambiado a maybeSingle para evitar excepciones si el perfil falta
 
-        if (mounted) {
-          if (profile['is_first_login'] == true) {
-            // Redirigir a cambio de contraseña
-            Navigator.pushReplacementNamed(context, '/change-password');
-          } else {
-            // Redirigir al dashboard normal
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          }
+        if (!mounted) return;
+
+        if (profile == null) {
+          throw Exception("Perfil de usuario no encontrado. Contacte al administrador.");
+        }
+
+        // 4. Redirección basada en is_first_login
+        if (profile['is_first_login'] == true) {
+          Navigator.pushReplacementNamed(context, '/change-password');
+        } else {
+          Navigator.pushReplacementNamed(context, '/dashboard');
         }
       }
     } catch (e) {

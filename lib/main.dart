@@ -4,6 +4,8 @@ import 'services/supabase_service.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/dashboard/dashboard_page.dart';
 import 'pages/auth/change_password_page.dart';
+import 'pages/vaccination/vaccination_form_page.dart';
+import 'pages/managment/sector_management_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +29,8 @@ class MainApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/dashboard': (context) => const DashboardPage(),
         '/change-password': (context) => const ChangePasswordPage(),
+        '/vaccination-form': (context) => const VaccinationFormPage(),
+        '/sector-management': (context) => const SectorManagementPage(),
       },
       theme: ThemeData(
         primarySwatch: Colors.blue,

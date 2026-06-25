@@ -27,11 +27,11 @@ class _DashboardPageState extends State<DashboardPage> {
           // Según el rol, devolvemos una vista distinta
           switch (role) {
             case 'coordinador_campana':
-              return _buildCoordinadorCampanaView();
+              return _buildCoordinadorCampanaView(context);
             case 'coordinador_brigada':
-              return _buildCoordinadorBrigadaView();
+              return _buildCoordinadorBrigadaView(context);
             case 'vacunador':
-              return _buildVacunadorView();
+              return _buildVacunadorView(context);
             default:
               return const Center(child: Text("Rol no reconocido"));
           }
@@ -40,22 +40,44 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // Vistas simplificadas por rol
-  Widget _buildCoordinadorCampanaView() {
-    return ListView(children: const [
-      ListTile(title: Text("Crear Sectores")),
-      ListTile(title: Text("Crear Coordinadores de Brigada")),
-    ]);
+  // Vistas por rol
+  Widget _buildCoordinadorCampanaView(BuildContext context) {
+    return ListView(
+      children: [
+        ListTile(
+          title: const Text("Crear Sectores"),
+          onTap: () => Navigator.pushNamed(context, '/sector-management'),
+        ),
+        ListTile(
+          title: const Text("Crear Coordinadores de Brigada"),
+          onTap: () {
+            // Aquí luego puedes enlazar a la página de gestión de coordinadores
+          },
+        ),
+      ],
+    );
   }
 
-  Widget _buildCoordinadorBrigadaView() {
-    return ListView(children: const [
-      ListTile(title: Text("Ver sectores asignados")),
-      ListTile(title: Text("Crear Vacunadores")),
-    ]);
+  Widget _buildCoordinadorBrigadaView(BuildContext context) {
+    return ListView(
+      children: [
+        ListTile(
+          title: const Text("Ver sectores asignados"),
+          onTap: () {
+            // Aquí enlazas a la vista de sectores asignados
+          },
+        ),
+        ListTile(
+          title: const Text("Crear Vacunadores"),
+          onTap: () {
+            // Aquí enlazas a la página de gestión de vacunadores
+          },
+        ),
+      ],
+    );
   }
 
-  Widget _buildVacunadorView() {
+  Widget _buildVacunadorView(BuildContext context) {
     return Center(
       child: ElevatedButton(
         onPressed: () => Navigator.pushNamed(context, '/vaccination-form'),
