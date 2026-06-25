@@ -11,10 +11,26 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final _authService = AuthService();
 
+  Future<void> _logout() async {
+    await _authService.signOut();
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Dashboard Principal")),
+      appBar: AppBar(
+        title: const Text("Dashboard Principal"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: "Cerrar sesión",
+            onPressed: _logout,
+          ),
+        ],
+      ),
       body: FutureBuilder<String?>(
         future: _authService.getUserRole(),
         builder: (context, snapshot) {
@@ -24,7 +40,6 @@ class _DashboardPageState extends State<DashboardPage> {
           
           final role = snapshot.data;
 
-          // Según el rol, devolvemos una vista distinta
           switch (role) {
             case 'coordinador_campana':
               return _buildCoordinadorCampanaView(context);
@@ -40,7 +55,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // Vistas por rol
   Widget _buildCoordinadorCampanaView(BuildContext context) {
     return ListView(
       children: [
@@ -50,9 +64,14 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         ListTile(
           title: const Text("Crear Coordinadores de Brigada"),
-          onTap: () {
-            // Aquí luego puedes enlazar a la página de gestión de coordinadores
-          },
+          onTap: () => Navigator.pushNamed(
+            context,
+            '/user-management',
+            arguments: {
+              'currentRole': 'coordinador_campana',
+              'sectorId': 'sector-id',
+            },
+          ),
         ),
       ],
     );
@@ -69,9 +88,14 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         ListTile(
           title: const Text("Crear Vacunadores"),
-          onTap: () {
-            // Aquí enlazas a la página de gestión de vacunadores
-          },
+          onTap: () => Navigator.pushNamed(
+            context,
+            '/user-management',
+            arguments: {
+              'currentRole': 'coordinador_brigada',
+              'sectorId': 'sector-id',
+            },
+          ),
         ),
       ],
     );
