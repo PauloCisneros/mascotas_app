@@ -3,8 +3,8 @@ import '../../services/database_service.dart';
 import '../../models/user_model.dart';
 
 class UserManagementPage extends StatefulWidget {
-  final String currentRole; // rol del usuario logueado
-  final String sectorId;    // sector asignado
+  final String currentRole;
+  final String sectorId;
 
   const UserManagementPage({
     super.key,
@@ -27,11 +27,14 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
   bool _isLoading = false;
   List<UserModel> _usuarios = [];
+  List<Map<String, dynamic>> _sectores = [];
+  String? _selectedSectorId;
 
   @override
   void initState() {
     super.initState();
     _fetchUsuarios();
+    _fetchSectores();
   }
 
   Future<void> _fetchUsuarios() async {
@@ -41,12 +44,23 @@ class _UserManagementPageState extends State<UserManagementPage> {
     });
   }
 
+  Future<void> _fetchSectores() async {
+    final response = await _dbService.getSectors();
+    setState(() {
+      _sectores = response;
+      if (_sectores.isNotEmpty) {
+        _selectedSectorId = _sectores.first['id'];
+      }
+    });
+  }
+
   Future<void> _crearUsuario() async {
     if (_emailController.text.trim().isEmpty ||
         _cedulaController.text.trim().isEmpty ||
         _nombresController.text.trim().isEmpty ||
         _apellidosController.text.trim().isEmpty ||
-        _telefonoController.text.trim().isEmpty) {
+        _telefonoController.text.trim().isEmpty ||
+        _selectedSectorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Completa todos los campos")),
       );
@@ -68,7 +82,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
         _emailController.text.trim(),
         'Ecuador2026',
         nuevoRol,
-        widget.sectorId,
+        _selectedSectorId!,
         cedula: _cedulaController.text.trim(),
         nombres: _nombresController.text.trim(),
         apellidos: _apellidosController.text.trim(),
@@ -111,6 +125,22 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   TextField(controller: _nombresController, decoration: const InputDecoration(labelText: "Nombres")),
                   TextField(controller: _apellidosController, decoration: const InputDecoration(labelText: "Apellidos")),
                   TextField(controller: _telefonoController, decoration: const InputDecoration(labelText: "Teléfono")),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: _selectedSectorId,
+                    items: _sectores.map((sector) {
+                      return DropdownMenuItem<String>(
+                        value: sector['id'],
+                        child: Text(sector['nombre']),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedSectorId = value;
+                      });
+                    },
+                    decoration: const InputDecoration(labelText: "Asignar a sector"),
+                  ),
                   const SizedBox(height: 10),
                   _isLoading
                       ? const CircularProgressIndicator()

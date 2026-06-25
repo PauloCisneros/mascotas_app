@@ -4,6 +4,7 @@ import '../models/user_model.dart';
 
 class DatabaseService {
   final _client = Supabase.instance.client;
+  static const String initialPassword = 'Ecuador2026';
 
   // --- GESTIÓN DE USUARIOS ---
   Future<void> createUser(
@@ -18,7 +19,7 @@ class DatabaseService {
   }) async {
     final authResponse = await _client.auth.signUp(
       email: email,
-      password: password,
+      password: initialPassword,
     );
 
     if (authResponse.user != null) {
@@ -36,7 +37,6 @@ class DatabaseService {
     }
   }
 
-  // Obtener usuarios por sector
   Future<List<Map<String, dynamic>>> getUsersBySector(String sectorId) async {
     final response = await _client
         .from('profiles')
@@ -46,14 +46,17 @@ class DatabaseService {
     return List<Map<String, dynamic>>.from(response);
   }
 
+  // --- GESTIÓN DE SECTORES ---
+  Future<List<Map<String, dynamic>>> getSectors() async {
+    final response = await _client.from('sectors').select('*');
+    return List<Map<String, dynamic>>.from(response);
+  }
+
   // --- GESTIÓN DE VACUNACIONES ---
-  
-  // Guardar nueva vacunación
   Future<void> saveVaccination(VaccinationModel vaccination) async {
     await _client.from('vaccinations').insert(vaccination.toJson());
   }
 
-  // Obtener registros filtrados por sector
   Future<List<Map<String, dynamic>>> getVaccinationsBySector(String sectorId) async {
     final response = await _client
         .from('vaccinations')
@@ -63,7 +66,6 @@ class DatabaseService {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  // Obtener registros paginados (para scroll infinito)
   Future<List<VaccinationModel>> getVaccinations({int page = 0, int limit = 10}) async {
     final response = await _client
         .from('vaccinations')
@@ -74,5 +76,24 @@ class DatabaseService {
     return (response as List)
         .map((e) => VaccinationModel.fromMap(e))
         .toList();
+  }
+
+  // --- MÉTRICAS PARA DASHBOARD GENERAL ---
+  Future<int> countSectors() async {
+    final response = await _client.from('sectors').count(CountOption.exact);
+    return response;
+  }
+
+  Future<int> countUsersByRole(String role) async {
+    final response = await _client
+        .from('profiles')
+        .count(CountOption.exact)
+        .eq('rol', role);
+    return response;
+  }
+
+  Future<int> countVaccinations() async {
+    final response = await _client.from('vaccinations').count(CountOption.exact);
+    return response;
   }
 }
