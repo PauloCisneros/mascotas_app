@@ -21,6 +21,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Map<String, dynamic>? _userProfile;
   String? _role;
   String? _sectorNombre;
+  int _perrosVacunados = 0;
+  int _gatosVacunados = 0;
 
   Future<void> _logout() async {
     await _authService.signOut();
@@ -47,39 +49,47 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _fetchMetrics() async {
     setState(() => _loadingMetrics = true);
+    try {
+      if ((_role == 'coordinador_brigada' || _role == 'vacunador') && _userProfile?['sector_id'] != null) {
+        final sectorId = _userProfile!['sector_id'];
 
-    if ((_role == 'coordinador_brigada' || _role == 'vacunador') && _userProfile?['sector_id'] != null) {
-      final sectorId = _userProfile!['sector_id'];
+        final sector = await _dbService.getSectorById(sectorId);
+        final vacunadores = await _dbService.getVaccinatorsBySector(sectorId);
+        final vacunaciones = await _dbService.getVaccinationsBySector(sectorId);
+        final perros = await _dbService.countDogsVaccinatedBySector(sectorId);
+        final gatos = await _dbService.countCatsVaccinatedBySector(sectorId);
 
-      final sector = await _dbService.getSectorById(sectorId);
-      final vacunadores = await _dbService.getUsersBySector(sectorId);
-      final vacunaciones = await _dbService.getVaccinationsBySector(sectorId);
+        setState(() {
+          _sectores = 1;
+          _brigadistas = 0;
+          _vacunadores = vacunadores.length;
+          _vacunaciones = vacunaciones.length;
+          _sectorNombre = sector?['nombre'] ?? 'Mi Sector';
+          _perrosVacunados = perros;
+          _gatosVacunados = gatos;
+          _loadingMetrics = false;
+        });
+      } else if (_role == 'coordinador_campana') {
+        final sectores = await _dbService.countSectors();
+        final brigadistas = await _dbService.countUsersByRole('coordinador_brigada');
+        final vacunadores = await _dbService.countUsersByRole('vacunador');
+        final vacunaciones = await _dbService.countVaccinations();
 
-      setState(() {
-        _sectores = 1;
-        _brigadistas = 0;
-        _vacunadores = vacunadores.length;
-        _vacunaciones = vacunaciones.length;
-        _sectorNombre = sector?['nombre'] ?? 'Mi Sector';
-        _loadingMetrics = false;
-      });
-    } else {
-      // Dashboard general (coordinador campaña)
-      final sectores = await _dbService.countSectors();
-      final brigadistas = await _dbService.countUsersByRole('coordinador_brigada');
-      final vacunadores = await _dbService.countUsersByRole('vacunador');
-      final vacunaciones = await _dbService.countVaccinations();
-
-      setState(() {
-        _sectores = sectores;
-        _brigadistas = brigadistas;
-        _vacunadores = vacunadores;
-        _vacunaciones = vacunaciones;
-        _loadingMetrics = false;
-      });
+        setState(() {
+          _sectores = sectores;
+          _brigadistas = brigadistas;
+          _vacunadores = vacunadores;
+          _vacunaciones = vacunaciones;
+          _loadingMetrics = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _loadingMetrics = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error cargando métricas: $e")),
+      );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -198,10 +208,18 @@ class _DashboardPageState extends State<DashboardPage> {
                 runSpacing: 16,
                 alignment: WrapAlignment.center,
                 children: [
-                  _buildMetricCard(_role == 'coordinador_brigada'? (_sectorNombre ?? 'Mi Sector'): "Sectores",_sectores,Icons.map,Colors.blue,),
-                  _buildMetricCard("Coordinadores", _brigadistas, Icons.group, Colors.orange),
-                  _buildMetricCard("Vacunadores", _vacunadores, Icons.medical_services, Colors.green),
-                  _buildMetricCard("Vacunaciones", _vacunaciones, Icons.vaccines, Colors.purple),
+                  if (_role == 'coordinador_campana') ...[
+                    _buildMetricCard("Sectores", _sectores, Icons.map, Colors.blue),
+                    _buildMetricCard("Coordinadores", _brigadistas, Icons.group, Colors.orange),
+                    _buildMetricCard("Vacunadores", _vacunadores, Icons.medical_services, Colors.green),
+                    _buildMetricCard("Vacunaciones", _vacunaciones, Icons.vaccines, Colors.purple),
+                  ],
+                  if (_role == 'coordinador_brigada' || _role == 'vacunador') ...[
+                    _buildMetricCard("Vacunadores", _vacunadores, Icons.medical_services, Colors.green),
+                    _buildMetricCard("Total Vacunaciones", _vacunaciones, Icons.vaccines, Colors.purple),
+                    _buildMetricCard("Perros Vacunados", _perrosVacunados, Icons.pets, Colors.brown),
+                    _buildMetricCard("Gatos Vacunados", _gatosVacunados, Icons.pets, Colors.orange),
+                  ],
                 ],
               ),
             ),
