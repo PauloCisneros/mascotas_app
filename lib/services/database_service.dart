@@ -133,27 +133,43 @@ class DatabaseService {
         .toList();
   }
 
-  Future<int> countVaccinations() async {
-    final response = await _client.from('vaccinations').count(CountOption.exact);
-    return response;
-  }
+  Future<int> countVaccinations({String? sectorId}) async {
+    var query = _client.from('vaccinations').select('id');
 
-  // --- MÉTRICAS ESPECÍFICAS ---
-  Future<int> countDogsVaccinatedBySector(String sectorId) async {
-    final response = await _client
-        .from('vaccinations')
-        .select('id')
-        .eq('sector_id', sectorId)
-        .eq('tipo_mascota', 'perro');
+    if (sectorId != null) {
+      query = query.eq('sector_id', sectorId);
+    }
+
+    final response = await query;
     return response.length;
   }
 
-  Future<int> countCatsVaccinatedBySector(String sectorId) async {
-    final response = await _client
+  // --- MÉTRICAS ESPECÍFICAS ---
+  Future<int> countDogsVaccinated({String? sectorId}) async {
+    var query = _client
         .from('vaccinations')
         .select('id')
-        .eq('sector_id', sectorId)
+        .eq('tipo_mascota', 'perro');
+
+    if (sectorId != null) {
+      query = query.eq('sector_id', sectorId);
+    }
+
+    final response = await query;
+    return response.length;
+  }
+
+  Future<int> countCatsVaccinated({String? sectorId}) async {
+    var query = _client
+        .from('vaccinations')
+        .select('id')
         .eq('tipo_mascota', 'gato');
+
+    if (sectorId != null) {
+      query = query.eq('sector_id', sectorId);
+    }
+
+    final response = await query;
     return response.length;
   }
 

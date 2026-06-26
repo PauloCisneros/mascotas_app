@@ -17,12 +17,20 @@ class _DashboardPageState extends State<DashboardPage> {
   int _brigadistas = 0;
   int _vacunadores = 0;
   int _vacunaciones = 0;
+  int _perrosVacunados = 0;
+  int _gatosVacunados = 0;
+
   bool _loadingMetrics = true;
+
   Map<String, dynamic>? _userProfile;
   String? _role;
   String? _sectorNombre;
-  int _perrosVacunados = 0;
-  int _gatosVacunados = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile();
+  }
 
   Future<void> _logout() async {
     await _authService.signOut();
@@ -31,62 +39,80 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchUserProfile();
-  }
-
   Future<void> _fetchUserProfile() async {
     final profile = await _authService.getUserProfile();
     final role = await _authService.getUserRole();
+
     setState(() {
       _userProfile = profile;
       _role = role;
     });
+
     _fetchMetrics();
   }
 
   Future<void> _fetchMetrics() async {
     setState(() => _loadingMetrics = true);
+
     try {
-      if ((_role == 'coordinador_brigada' || _role == 'vacunador') && _userProfile?['sector_id'] != null) {
-        final sectorId = _userProfile!['sector_id'];
-
-        final sector = await _dbService.getSectorById(sectorId);
-        final vacunadores = await _dbService.getVaccinatorsBySector(sectorId);
-        final vacunaciones = await _dbService.getVaccinationsBySector(sectorId);
-        final perros = await _dbService.countDogsVaccinatedBySector(sectorId);
-        final gatos = await _dbService.countCatsVaccinatedBySector(sectorId);
-
-        setState(() {
-          _sectores = 1;
-          _brigadistas = 0;
-          _vacunadores = vacunadores.length;
-          _vacunaciones = vacunaciones.length;
-          _sectorNombre = sector?['nombre'] ?? 'Mi Sector';
-          _perrosVacunados = perros;
-          _gatosVacunados = gatos;
-          _loadingMetrics = false;
-        });
-      } else if (_role == 'coordinador_campana') {
+      // =========================
+      // CAMPAÑA (GLOBAL)
+      // =========================
+      if (_role == 'coordinador_campana') {
         final sectores = await _dbService.countSectors();
-        final brigadistas = await _dbService.countUsersByRole('coordinador_brigada');
-        final vacunadores = await _dbService.countUsersByRole('vacunador');
+        final brigadistas =
+            await _dbService.countUsersByRole('coordinador_brigada');
+        final vacunadores =
+            await _dbService.countUsersByRole('vacunador');
+
         final vacunaciones = await _dbService.countVaccinations();
+        final perros = await _dbService.countDogsVaccinated();
+        final gatos = await _dbService.countCatsVaccinated();
 
         setState(() {
           _sectores = sectores;
           _brigadistas = brigadistas;
           _vacunadores = vacunadores;
           _vacunaciones = vacunaciones;
+          _perrosVacunados = perros;
+          _gatosVacunados = gatos;
+          _loadingMetrics = false;
+        });
+      }
+
+      // =========================
+      // BRIGADA / VACUNADOR (SECTOR)
+      // =========================
+      else if (_role == 'coordinador_brigada' ||
+          _role == 'vacunador') {
+        final sectorId = _userProfile?['sector_id'];
+
+        final sector = await _dbService.getSectorById(sectorId);
+        final vacunadores =
+            await _dbService.getVaccinatorsBySector(sectorId);
+
+        final vacunaciones =
+            await _dbService.countVaccinations(sectorId: sectorId);
+        final perros =
+            await _dbService.countDogsVaccinated(sectorId: sectorId);
+        final gatos =
+            await _dbService.countCatsVaccinated(sectorId: sectorId);
+
+        setState(() {
+          _sectores = 1;
+          _brigadistas = 0;
+          _vacunadores = vacunadores.length;
+          _vacunaciones = vacunaciones;
+          _perrosVacunados = perros;
+          _gatosVacunados = gatos;
+          _sectorNombre = sector?['nombre'] ?? 'Mi Sector';
           _loadingMetrics = false;
         });
       }
     } catch (e) {
       setState(() => _loadingMetrics = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error cargando métricas: $e")),
+        SnackBar(content: Text("Error: $e")),
       );
     }
   }
@@ -95,45 +121,44 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.blue.shade50,
+
+      // =========================
+      // APPBAR
+      // =========================
       appBar: AppBar(
         title: Text(
-          (_role == 'coordinador_brigada' || _role == 'vacunador')
-              ? "Dashboard de ${_sectorNombre ?? 'Mi Sector'}"
-              : "Dashboard Principal",
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          _role == 'coordinador_campana'
+              ? "Dashboard General"
+              : "Dashboard de ${_sectorNombre ?? 'Mi Sector'}",
         ),
         backgroundColor: Colors.blue,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: "Recargar métricas",
             onPressed: _fetchMetrics,
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: "Cerrar sesión",
             onPressed: _logout,
           ),
         ],
       ),
+
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.blue, Colors.lightBlueAccent],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                 ),
               ),
               accountName: Text(
                 "${_userProfile?['nombres'] ?? ''} ${_userProfile?['apellidos'] ?? ''}",
-                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               accountEmail: Text(
-                "${_userProfile?['email'] ?? ''} • Rol: ${_role ?? 'No detectado'}",
+                "${_userProfile?['email'] ?? ''} • Rol: ${_role ?? ''}",
               ),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
@@ -141,67 +166,103 @@ class _DashboardPageState extends State<DashboardPage> {
                   _userProfile?['nombres'] != null
                       ? _userProfile!['nombres'][0].toUpperCase()
                       : '?',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
+                  style: const TextStyle(fontSize: 24, color: Colors.blue),
                 ),
               ),
             ),
-            // Opciones para Coordinador de campaña
             if (_role == 'coordinador_campana') ...[
-              _buildNavButton("Crear Sectores", Icons.map, () {
-                Navigator.pushNamed(context, '/sector-management');
-              }),
-              _buildNavButton("Crear Coordinadores de Brigada", Icons.group_add, () {
-                Navigator.pushNamed(
-                  context,
-                  '/user-management',
-                  arguments: {
-                    'currentRole': 'coordinador_campana',
-                  },
-                );
-              }),
-            ],
-            // Opciones para Coordinador de brigada
-            if (_role == 'coordinador_brigada') ...[
-              _buildNavButton("Crear Vacunadores", Icons.person_add, () {
-                final sectorId = _userProfile?['sector_id'];
-                if (sectorId != null && sectorId is String && sectorId.isNotEmpty) {
+              ListTile(
+                leading: const Icon(Icons.map),
+                title: const Text("Crear Sectores"),
+                onTap: () {
+                  Navigator.pushNamed(context, '/sector-management');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.group_add),
+                title: const Text("Crear Coordinadores de Brigada"),
+                onTap: () {
                   Navigator.pushNamed(
                     context,
                     '/user-management',
                     arguments: {
-                      'currentRole': 'coordinador_brigada',
-                      'sectorId': sectorId,
+                      'currentRole': 'coordinador_campana',
                     },
                   );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("No tienes un sector asignado")),
-                  );
-                }
-              }),
-              _buildNavButton("Asignar/Reasignar Vacunadores", Icons.swap_horiz, () {
-                Navigator.pushNamed(context, '/assign-vaccinators');
-              }),
-              _buildNavButton("Ver Registros de Vacunación", Icons.list_alt, () {
-                Navigator.pushNamed(context, '/vaccination-details');
-              }),
+                },
+              ),
             ],
-            // Opciones para Vacunador
+            if (_role == 'coordinador_brigada') ...[
+              ListTile(
+                leading: const Icon(Icons.person_add),
+                title: const Text("Crear Vacunadores"),
+                onTap: () {
+                  final sectorId = _userProfile?['sector_id'];
+
+                  if (sectorId != null && sectorId.isNotEmpty) {
+                    Navigator.pushNamed(
+                      context,
+                      '/user-management',
+                      arguments: {
+                        'currentRole': 'coordinador_brigada',
+                        'sectorId': sectorId,
+                      },
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("No tienes un sector asignado"),
+                      ),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.swap_horiz),
+                title: const Text("Asignar/Reasignar Vacunadores"),
+                onTap: () {
+                  Navigator.pushNamed(context, '/assign-vaccinators');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.list_alt),
+                title: const Text("Ver Registros de Vacunación"),
+                onTap: () {
+                  Navigator.pushNamed(context, '/vaccination-details');
+                },
+              ),
+            ],
             if (_role == 'vacunador') ...[
-              _buildNavButton("Registrar Nueva Vacunación", Icons.vaccines, () {
-                Navigator.pushNamed(context, '/vaccination-form');
-              }),
-              _buildNavButton("Ver Mis Registros", Icons.list_alt, () {
-                Navigator.pushNamed(context, '/vaccination-details');
-              }),
+              ListTile(
+                leading: const Icon(Icons.vaccines),
+                title: const Text("Registrar Vacunación"),
+                onTap: () {
+                  Navigator.pushNamed(context, '/vaccination-form');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.list_alt),
+                title: const Text("Mis Registros"),
+                onTap: () {
+                  Navigator.pushNamed(context, '/vaccination-details');
+                },
+              ),
             ],
+
+            const Divider(),
+
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text("Cerrar sesión"),
+              onTap: _logout,
+            ),
           ],
         ),
       ),
+
+      // =========================
+      // BODY
+      // =========================
       body: _loadingMetrics
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -209,19 +270,21 @@ class _DashboardPageState extends State<DashboardPage> {
               child: Wrap(
                 spacing: 16,
                 runSpacing: 16,
-                alignment: WrapAlignment.center,
                 children: [
                   if (_role == 'coordinador_campana') ...[
-                    _buildMetricCard("Sectores", _sectores, Icons.map, Colors.blue),
-                    _buildMetricCard("Coordinadores", _brigadistas, Icons.group, Colors.orange),
-                    _buildMetricCard("Vacunadores", _vacunadores, Icons.medical_services, Colors.green),
-                    _buildMetricCard("Vacunaciones", _vacunaciones, Icons.vaccines, Colors.purple),
+                    _buildCard("Sectores", _sectores, Colors.blue, Icons.map),
+                    _buildCard("Coordinadores", _brigadistas, Colors.orange, Icons.group_add),
+                    _buildCard("Vacunadores", _vacunadores, Colors.green, Icons.person_add),
+                    _buildCard("Vacunaciones", _vacunaciones, Colors.purple, Icons.medical_services),
+                    _buildCard("Perros", _perrosVacunados, Colors.brown, Icons.pets),
+                    _buildCard("Gatos", _gatosVacunados, Colors.orange, Icons.pets),
                   ],
-                  if (_role == 'coordinador_brigada' || _role == 'vacunador') ...[
-                    _buildMetricCard("Vacunadores", _vacunadores, Icons.medical_services, Colors.green),
-                    _buildMetricCard("Total Vacunaciones", _vacunaciones, Icons.vaccines, Colors.purple),
-                    _buildMetricCard("Perros Vacunados", _perrosVacunados, Icons.pets, Colors.brown),
-                    _buildMetricCard("Gatos Vacunados", _gatosVacunados, Icons.pets, Colors.orange),
+
+                  if (_role != 'coordinador_campana') ...[
+                    _buildCard("Vacunadores", _vacunadores, Colors.green, Icons.person_add),
+                    _buildCard("Vacunaciones", _vacunaciones, Colors.purple, Icons.medical_services),
+                    _buildCard("Perros", _perrosVacunados, Colors.brown, Icons.pets),
+                    _buildCard("Gatos", _gatosVacunados, Colors.orange, Icons.pets),
                   ],
                 ],
               ),
@@ -229,34 +292,27 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildNavButton(String title, IconData icon, VoidCallback onTap) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.blue),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildMetricCard(String title, int value, IconData icon, Color color) {
+  Widget _buildCard(
+    String title,
+    int value,
+    Color color,
+    IconData icon,
+  ) {
     return SizedBox(
       width: 160,
       height: 140,
       child: Card(
         elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [color.withOpacity(0.9), color.withOpacity(0.6)],
+              colors: [
+                color.withOpacity(0.9),
+                color.withOpacity(0.6),
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -271,12 +327,14 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 8),
                 Text(
                   title,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
+                const SizedBox(height: 6),
                 Text(
                   value.toString(),
                   style: const TextStyle(

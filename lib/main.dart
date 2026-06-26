@@ -8,6 +8,7 @@ import 'pages/vaccination/vaccination_form_page.dart';
 import 'pages/vaccination/vaccination_details_page.dart';
 import 'pages/managment/sector_management_page.dart';
 import 'pages/managment/user_management_page.dart';
+import 'pages/auth/recovery_password_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,7 @@ class MainApp extends StatelessWidget {
         '/vaccination-form': (context) => const VaccinationFormPage(),
         '/vaccination-details': (context) => const VaccinationDetailsPage(),
         '/sector-management': (context) => const SectorManagementPage(),
+        '/recovery-password': (context) => const RecoveryPasswordPage(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/user-management') {

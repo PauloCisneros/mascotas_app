@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
+import '../auth/recovery_password_page.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -144,13 +146,18 @@ class _LoginPageState extends State<LoginPage> {
               // Texto adicional
               TextButton(
                 onPressed: () {
-                  // Aquí podrías enlazar a recuperación de contraseña
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RecoveryPasswordPage(),
+                    ),
+                  );
                 },
                 child: const Text(
                   "¿Olvidaste tu contraseña?",
                   style: TextStyle(color: Colors.blue),
                 ),
-              ),
+              )
             ],
           ),
         ),
