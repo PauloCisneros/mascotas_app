@@ -98,4 +98,13 @@ class DatabaseService {
     final response = await _client.from('vaccinations').count(CountOption.exact);
     return response;
   }
+Future<Map<String, dynamic>?> getUserProfile(String userId) async {
+  final response = await _client
+      .from('profiles')
+      .select('nombres, apellidos, email, user_role')
+      .eq('id', userId)
+      .maybeSingle();
+  return response;
+}
+
 }

@@ -27,4 +27,23 @@ class AuthService {
   Future<void> signOut() async {
     await _client.auth.signOut();
   }
+
+  // 4. Obtener el ID del usuario actual
+  String? getUserId() {
+    return _client.auth.currentUser?.id;
+  }
+
+  // 5. Obtener el perfil completo del usuario
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return null;
+
+    final data = await _client
+        .from('profiles')
+        .select('nombres, apellidos, email, rol')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    return data;
+  }
 }
