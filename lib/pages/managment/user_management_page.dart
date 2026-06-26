@@ -4,12 +4,12 @@ import '../../models/user_model.dart';
 
 class UserManagementPage extends StatefulWidget {
   final String currentRole;
-  final String sectorId;
+  final String? sectorId; // null para coordinador de campaña
 
   const UserManagementPage({
     super.key,
     required this.currentRole,
-    required this.sectorId,
+    this.sectorId,
   });
 
   @override
@@ -28,7 +28,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
   bool _isLoading = false;
   List<UserModel> _usuarios = [];
   List<Map<String, dynamic>> _sectores = [];
-  String? _selectedSectorId;
 
   @override
   void initState() {
@@ -38,49 +37,51 @@ class _UserManagementPageState extends State<UserManagementPage> {
   }
 
   Future<void> _fetchUsuarios() async {
-    final response = await _dbService.getUsersBySector(widget.sectorId);
-    setState(() {
-      _usuarios = response.map((e) => UserModel.fromJson(e)).toList();
-    });
-  }
+    if (widget.currentRole == 'coordinador_brigada' && widget.sectorId != null) {
+      // brigadista ve SOLO vacunadores de su sector
+      final response = await _dbService.getVaccinatorsBySector(widget.sectorId!);
+      setState(() {
+        _usuarios = response.map((e) => UserModel.fromJson(e)).toList();
+      });
+    } else if (widget.currentRole == 'coordinador_campana') {
+      // campaña ve todos los brigadistas
+      final response = await _dbService.getUsersByRole('coordinador_brigada');
+      setState(() {
+        _usuarios = response.map((e) => UserModel.fromJson(e)).toList();
+      });
+    }
+}
 
   Future<void> _fetchSectores() async {
     final response = await _dbService.getSectors();
     setState(() {
       _sectores = response;
-      if (_sectores.isNotEmpty) {
-        _selectedSectorId = _sectores.first['id'];
-      }
     });
   }
 
   Future<void> _crearUsuario() async {
-  // Nueva validación de seguridad:
-  if (_selectedSectorId == null || _sectores.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Por favor, espera a que carguen los sectores")),
-    );
-    return;
-  }
-
-  if (_emailController.text.trim().isEmpty ||
-      _cedulaController.text.trim().isEmpty ||
-      _nombresController.text.trim().isEmpty ||
-      _apellidosController.text.trim().isEmpty ||
-      _telefonoController.text.trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Completa todos los campos")),
-    );
-    return;
-  }
+    if (_emailController.text.trim().isEmpty ||
+        _cedulaController.text.trim().isEmpty ||
+        _nombresController.text.trim().isEmpty ||
+        _apellidosController.text.trim().isEmpty ||
+        _telefonoController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Completa todos los campos")),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
       String nuevoRol;
+      String? sectorAsignado;
+
       if (widget.currentRole == 'coordinador_campana') {
         nuevoRol = 'coordinador_brigada';
+        sectorAsignado = null; // campaña crea brigadistas sin sector
       } else if (widget.currentRole == 'coordinador_brigada') {
         nuevoRol = 'vacunador';
+        sectorAsignado = widget.sectorId!;
       } else {
         throw Exception("Este rol no puede crear usuarios");
       }
@@ -89,7 +90,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
         _emailController.text.trim(),
         'Ecuador2026',
         nuevoRol,
-        _selectedSectorId!,
+        sectorAsignado ?? '',
         cedula: _cedulaController.text.trim(),
         nombres: _nombresController.text.trim(),
         apellidos: _apellidosController.text.trim(),
@@ -116,6 +117,14 @@ class _UserManagementPageState extends State<UserManagementPage> {
     }
   }
 
+  Future<void> _asignarSector(String userId, String sectorId) async {
+    await _dbService.updateUserSector(userId, sectorId);
+    await _fetchUsuarios();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Sector asignado correctamente")),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,22 +142,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   TextField(controller: _apellidosController, decoration: const InputDecoration(labelText: "Apellidos")),
                   TextField(controller: _telefonoController, decoration: const InputDecoration(labelText: "Teléfono")),
                   const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: _selectedSectorId,
-                    items: _sectores.map((sector) {
-                      return DropdownMenuItem<String>(
-                        value: sector['id'],
-                        child: Text(sector['nombre']),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedSectorId = value;
-                      });
-                    },
-                    decoration: const InputDecoration(labelText: "Asignar a sector"),
-                  ),
-                  const SizedBox(height: 10),
                   _isLoading
                       ? const CircularProgressIndicator()
                       : ElevatedButton(
@@ -165,7 +158,28 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 final user = _usuarios[index];
                 return ListTile(
                   title: Text(user.email),
-                  subtitle: Text("Rol: ${user.rol}"),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Rol: ${user.rol}"),
+                      if (widget.currentRole == 'coordinador_campana' && user.rol == 'coordinador_brigada')
+                        DropdownButton<String>(
+                          value: user.sectorId?.toString(),
+                          hint: const Text("Asignar sector"),
+                          items: _sectores.map((sector) {
+                            return DropdownMenuItem<String>(
+                              value: sector['id'].toString(),
+                              child: Text(sector['nombre']),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              _asignarSector(user.id, value);
+                            }
+                          },
+                        ),
+                    ],
+                  ),
                   trailing: user.isFirstLogin
                       ? const Icon(Icons.lock_reset, color: Colors.orange)
                       : const Icon(Icons.check_circle, color: Colors.green),

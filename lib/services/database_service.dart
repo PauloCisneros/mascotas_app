@@ -106,5 +106,34 @@ Future<Map<String, dynamic>?> getUserProfile(String userId) async {
       .maybeSingle();
   return response;
 }
+Future<Map<String, dynamic>?> getSectorById(String sectorId) async {
+  final response = await _client
+      .from('sectors')
+      .select('*')
+      .eq('id', sectorId)
+      .maybeSingle(); // devuelve un solo registro o null
+  return response;
+}
+Future<List<Map<String, dynamic>>> getUsersByRole(String role) async {
+  final response = await _client
+      .from('profiles')
+      .select('*')
+      .eq('rol', role);
 
+  return List<Map<String, dynamic>>.from(response);
+}
+Future<void> updateUserSector(String userId, String sectorId) async {
+  await _client
+      .from('profiles')
+      .update({'sector_id': sectorId})
+      .eq('id', userId);
+}
+Future<List<Map<String, dynamic>>> getVaccinatorsBySector(String sectorId) async {
+  final response = await _client
+      .from('profiles')
+      .select()
+      .eq('sector_id', sectorId)
+      .eq('rol', 'vacunador');
+  return response;
+}
 }

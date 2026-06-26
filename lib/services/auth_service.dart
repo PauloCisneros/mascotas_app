@@ -40,10 +40,18 @@ class AuthService {
 
     final data = await _client
         .from('profiles')
-        .select('nombres, apellidos, email, rol')
+        .select('id, nombres, apellidos, email, rol, sector_id')
         .eq('id', user.id)
         .maybeSingle();
 
     return data;
+  }
+
+  // 6. Actualizar el sector del usuario
+  Future<void> updateUserSector(String userId, String sectorId) async {
+    await _client
+        .from('profiles')
+        .update({'sector_id': sectorId})
+        .eq('id', userId);
   }
 }
