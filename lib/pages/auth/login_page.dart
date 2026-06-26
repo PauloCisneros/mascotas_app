@@ -18,22 +18,18 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     setState(() => _isLoading = true);
     try {
-      // 1. Intentar inicio de sesión
       await _authService.signIn(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
 
-      // 2. Obtener el usuario actual
       final user = Supabase.instance.client.auth.currentUser;
-      
       if (user != null) {
-        // 3. Consultar el perfil de forma segura
         final profile = await Supabase.instance.client
             .from('profiles')
             .select('is_first_login')
             .eq('id', user.id)
-            .maybeSingle(); // Cambiado a maybeSingle para evitar excepciones si el perfil falta
+            .maybeSingle();
 
         if (!mounted) return;
 
@@ -41,7 +37,6 @@ class _LoginPageState extends State<LoginPage> {
           throw Exception("Perfil de usuario no encontrado. Contacte al administrador.");
         }
 
-        // 4. Redirección basada en is_first_login
         if (profile['is_first_login'] == true) {
           Navigator.pushReplacementNamed(context, '/change-password');
         } else {
@@ -51,7 +46,10 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -62,19 +60,99 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Campaña de Vacunación")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Correo")),
-            TextField(controller: _passwordController, decoration: const InputDecoration(labelText: "Contraseña"), obscureText: true),
-            const SizedBox(height: 20),
-            _isLoading 
-              ? const CircularProgressIndicator() 
-              : ElevatedButton(onPressed: _login, child: const Text("Ingresar")),
-          ],
+      backgroundColor: Colors.blue.shade50,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo / Icono
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.blue.shade100,
+                child: const Icon(Icons.vaccines, size: 50, color: Colors.blue),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Campaña de Vacunación",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Campo correo
+              TextField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.email, color: Colors.blue),
+                  labelText: "Correo electrónico",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Campo contraseña
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.lock, color: Colors.blue),
+                  labelText: "Contraseña",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Botón login
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _login,
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          textStyle: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        child: const Text("Ingresar"),
+                      ),
+                    ),
+
+              const SizedBox(height: 16),
+
+              // Texto adicional
+              TextButton(
+                onPressed: () {
+                  // Aquí podrías enlazar a recuperación de contraseña
+                },
+                child: const Text(
+                  "¿Olvidaste tu contraseña?",
+                  style: TextStyle(color: Colors.blue),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
