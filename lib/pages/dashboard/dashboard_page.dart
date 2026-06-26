@@ -186,14 +186,17 @@ class _DashboardPageState extends State<DashboardPage> {
               _buildNavButton("Asignar/Reasignar Vacunadores", Icons.swap_horiz, () {
                 Navigator.pushNamed(context, '/assign-vaccinators');
               }),
-              _buildNavButton("Corregir Registros de Vacunación", Icons.edit, () {
-                Navigator.pushNamed(context, '/vaccination-corrections');
+              _buildNavButton("Ver Registros de Vacunación", Icons.list_alt, () {
+                Navigator.pushNamed(context, '/vaccination-details');
               }),
             ],
             // Opciones para Vacunador
             if (_role == 'vacunador') ...[
               _buildNavButton("Registrar Nueva Vacunación", Icons.vaccines, () {
                 Navigator.pushNamed(context, '/vaccination-form');
+              }),
+              _buildNavButton("Ver Mis Registros", Icons.list_alt, () {
+                Navigator.pushNamed(context, '/vaccination-details');
               }),
             ],
           ],

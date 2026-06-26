@@ -156,4 +156,11 @@ class DatabaseService {
         .eq('tipo_mascota', 'gato');
     return response.length;
   }
+
+  Future<void> updateVaccination(VaccinationModel registro) async {
+    await _client
+        .from('vaccinations')
+        .update(registro.toJson())
+        .eq('id', registro.id!); 
+  }
 }

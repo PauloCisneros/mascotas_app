@@ -17,7 +17,7 @@ class _VaccinationDetailsPageState extends State<VaccinationDetailsPage> {
   bool _isLoading = false;
   bool _hasMore = true;
   int _page = 0;
-  final int _limit = 10; // cantidad por página
+  final int _limit = 10;
 
   @override
   void initState() {
@@ -57,16 +57,41 @@ class _VaccinationDetailsPageState extends State<VaccinationDetailsPage> {
           children: [
             Text("Propietario: ${registro.propietario}", style: const TextStyle(fontWeight: FontWeight.bold)),
             Text("Cédula: ${registro.cedula}"),
+            Text("Teléfono: ${registro.telefono}"),
+            const Divider(),
             Text("Mascota: ${registro.mascotaNombre} (${registro.tipo})"),
+            Text("Edad: ${registro.edad}"),
+            Text("Sexo: ${registro.sexo}"),
+            const Divider(),
+            Text("Vacuna aplicada: ${registro.vacuna}"),
+            Text("Observaciones: ${registro.observaciones}"),
+            const Divider(),
             Text("Latitud: ${registro.latitud}"),
             Text("Longitud: ${registro.longitud}"),
+            const Divider(),
+            Text("Fecha: ${registro.fecha.toLocal()}"),
             const SizedBox(height: 10),
-            Text("Fecha: ${registro.fecha?.toLocal()}"),
+            if (registro.fotoUrl != null && registro.fotoUrl!.isNotEmpty)
+              Image.network(registro.fotoUrl!, height: 150, fit: BoxFit.cover),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.edit),
+              label: const Text("Editar Registro"),
+              onPressed: () {
+                Navigator.pop(context); // cerrar modal
+                Navigator.pushNamed(
+                  context,
+                  '/vaccination-edit',
+                  arguments: registro,
+                );
+              },
+            ),
           ],
         ),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +106,7 @@ class _VaccinationDetailsPageState extends State<VaccinationDetailsPage> {
             return ListTile(
               title: Text("${registro.mascotaNombre} - ${registro.tipo}"),
               subtitle: Text("Propietario: ${registro.propietario}"),
+              trailing: Text(registro.fecha.toLocal().toString().split(' ')[0]),
               onTap: () => _showDetails(registro),
             );
           } else {

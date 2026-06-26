@@ -16,14 +16,21 @@ class _VaccinationFormPageState extends State<VaccinationFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _dbService = DatabaseService();
   bool _isLoading = false;
-  
+
   File? _image;
   Position? _currentPosition;
+  DateTime _fechaHora = DateTime.now();
 
   final _propietarioController = TextEditingController();
   final _cedulaController = TextEditingController();
+  final _telefonoController = TextEditingController();
   final _mascotaController = TextEditingController();
-  String _tipoMascota = 'Perro'; // Valor por defecto
+  final _edadController = TextEditingController();
+  final _vacunaController = TextEditingController();
+  final _observacionesController = TextEditingController();
+
+  String _tipoMascota = 'Perro';
+  String _sexoMascota = 'Macho';
 
   Future<void> _capturePhoto() async {
     final picker = ImagePicker();
@@ -40,7 +47,9 @@ class _VaccinationFormPageState extends State<VaccinationFormPage> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate() || _image == null || _currentPosition == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Completa todos los campos, foto y GPS")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Completa todos los campos, foto y GPS")),
+      );
       return;
     }
 
@@ -49,20 +58,30 @@ class _VaccinationFormPageState extends State<VaccinationFormPage> {
       final registro = VaccinationModel(
         propietario: _propietarioController.text,
         cedula: _cedulaController.text,
-        mascotaNombre: _mascotaController.text,
+        telefono: _telefonoController.text,
         tipo: _tipoMascota,
+        mascotaNombre: _mascotaController.text,
+        edad: _edadController.text,
+        sexo: _sexoMascota,
+        vacuna: _vacunaController.text,
+        observaciones: _observacionesController.text,
         latitud: _currentPosition!.latitude,
         longitud: _currentPosition!.longitude,
+        fecha: _fechaHora,
       );
 
       await _dbService.saveVaccination(registro);
-      
+
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Registro exitoso")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registro exitoso")),
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -77,23 +96,70 @@ class _VaccinationFormPageState extends State<VaccinationFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            TextFormField(controller: _propietarioController, decoration: const InputDecoration(labelText: "Propietario"), validator: (v) => v!.isEmpty ? 'Requerido' : null),
-            TextFormField(controller: _cedulaController, decoration: const InputDecoration(labelText: "Cédula")),
-            TextFormField(controller: _mascotaController, decoration: const InputDecoration(labelText: "Nombre Mascota")),
+            TextFormField(
+              controller: _propietarioController,
+              decoration: const InputDecoration(labelText: "Nombre del Propietario"),
+              validator: (v) => v!.isEmpty ? 'Requerido' : null,
+            ),
+            TextFormField(
+              controller: _cedulaController,
+              decoration: const InputDecoration(labelText: "Cédula del Propietario"),
+              validator: (v) => v!.isEmpty ? 'Requerido' : null,
+            ),
+            TextFormField(
+              controller: _telefonoController,
+              decoration: const InputDecoration(labelText: "Teléfono"),
+              keyboardType: TextInputType.phone,
+              validator: (v) => v!.isEmpty ? 'Requerido' : null,
+            ),
             DropdownButtonFormField(
               value: _tipoMascota,
-              items: ['Perro', 'Gato'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+              items: ['Perro', 'Gato']
+                  .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                  .toList(),
               onChanged: (v) => setState(() => _tipoMascota = v!),
+              decoration: const InputDecoration(labelText: "Tipo de Mascota"),
+            ),
+            TextFormField(
+              controller: _mascotaController,
+              decoration: const InputDecoration(labelText: "Nombre de la Mascota"),
+              validator: (v) => v!.isEmpty ? 'Requerido' : null,
+            ),
+            TextFormField(
+              controller: _edadController,
+              decoration: const InputDecoration(labelText: "Edad Aproximada"),
+              keyboardType: TextInputType.number,
+            ),
+            DropdownButtonFormField(
+              value: _sexoMascota,
+              items: ['Macho', 'Hembra']
+                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                  .toList(),
+              onChanged: (v) => setState(() => _sexoMascota = v!),
+              decoration: const InputDecoration(labelText: "Sexo"),
+            ),
+            TextFormField(
+              controller: _vacunaController,
+              decoration: const InputDecoration(labelText: "Vacuna Aplicada"),
+              validator: (v) => v!.isEmpty ? 'Requerido' : null,
+            ),
+            TextFormField(
+              controller: _observacionesController,
+              decoration: const InputDecoration(labelText: "Observaciones"),
+              maxLines: 3,
             ),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: _capturePhoto, child: const Text("Tomar Foto")),
-            if (_image != null) Image.file(_image!, height: 100),
+            ElevatedButton(onPressed: _capturePhoto, child: const Text("Tomar Fotografía")),
+            if (_image != null) Image.file(_image!, height: 120),
             ElevatedButton(onPressed: _getCurrentLocation, child: const Text("Capturar GPS")),
-            if (_currentPosition != null) Text("Ubicación capturada correctamente"),
+            if (_currentPosition != null)
+              Text("Ubicación capturada: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}"),
+            const SizedBox(height: 10),
+            Text("Fecha y hora: ${_fechaHora.toLocal()}"),
             const SizedBox(height: 20),
-            _isLoading 
-              ? const Center(child: CircularProgressIndicator())
-              : ElevatedButton(onPressed: _submitForm, child: const Text("Guardar Registro")),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton(onPressed: _submitForm, child: const Text("Guardar Registro")),
           ],
         ),
       ),
