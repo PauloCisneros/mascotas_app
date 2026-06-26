@@ -7,35 +7,37 @@ class DatabaseService {
   static const String initialPassword = 'Ecuador2026';
 
   // --- GESTIÓN DE USUARIOS ---
-  Future<void> createUser(
-    String email,
-    String password,
-    String role,
-    String sectorId, {
-    required String cedula,
-    required String nombres,
-    required String apellidos,
-    required String telefono,
-  }) async {
-    final authResponse = await _client.auth.signUp(
-      email: email,
-      password: initialPassword,
-    );
+ Future<void> createUser(
+  String email,
+  String password,
+  String role,
+  String sectorId, {
+  required String cedula,
+  required String nombres,
+  required String apellidos,
+  required String telefono,
+}) async {
+  // 1. Crea el usuario en Auth
+  final authResponse = await _client.auth.signUp(
+    email: email,
+    password: password,
+  );
 
-    if (authResponse.user != null) {
-      await _client.from('profiles').insert({
-        'id': authResponse.user!.id,
-        'email': email,
-        'rol': role,
-        'sector_id': sectorId,
-        'is_first_login': true,
-        'cedula': cedula,
-        'nombres': nombres,
-        'apellidos': apellidos,
-        'telefono': telefono,
-      });
-    }
+  // 2. Inserta directamente en profiles sin bloqueos
+  if (authResponse.user != null) {
+    await _client.from('profiles').insert({
+      'id': authResponse.user!.id,
+      'email': email,
+      'rol': role,
+      'sector_id': sectorId,
+      'is_first_login': true,
+      'cedula': cedula,
+      'nombres': nombres,
+      'apellidos': apellidos,
+      'telefono': telefono,
+    });
   }
+}
 
   Future<List<Map<String, dynamic>>> getUsersBySector(String sectorId) async {
     final response = await _client

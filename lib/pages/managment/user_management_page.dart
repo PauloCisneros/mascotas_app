@@ -55,17 +55,24 @@ class _UserManagementPageState extends State<UserManagementPage> {
   }
 
   Future<void> _crearUsuario() async {
-    if (_emailController.text.trim().isEmpty ||
-        _cedulaController.text.trim().isEmpty ||
-        _nombresController.text.trim().isEmpty ||
-        _apellidosController.text.trim().isEmpty ||
-        _telefonoController.text.trim().isEmpty ||
-        _selectedSectorId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Completa todos los campos")),
-      );
-      return;
-    }
+  // Nueva validación de seguridad:
+  if (_selectedSectorId == null || _sectores.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Por favor, espera a que carguen los sectores")),
+    );
+    return;
+  }
+
+  if (_emailController.text.trim().isEmpty ||
+      _cedulaController.text.trim().isEmpty ||
+      _nombresController.text.trim().isEmpty ||
+      _apellidosController.text.trim().isEmpty ||
+      _telefonoController.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Completa todos los campos")),
+    );
+    return;
+  }
 
     setState(() => _isLoading = true);
     try {
